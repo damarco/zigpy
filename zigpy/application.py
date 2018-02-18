@@ -46,7 +46,12 @@ class ControllerApplication(zigpy.util.ListenableMixin):
         self.devices[device.ieee] = device
         self.listener_event('device_initialized', device)
 
+<<<<<<< HEAD
     async def remove(self, ieee):
+=======
+    @asyncio.coroutine
+    def remove(self, ieee):
+>>>>>>> Quirks
         assert isinstance(ieee, t.EUI64)
         dev = self.devices.pop(ieee, None)
         if not dev:
