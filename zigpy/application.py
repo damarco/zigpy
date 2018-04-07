@@ -42,6 +42,8 @@ class ControllerApplication(zigpy.util.ListenableMixin):
 
     def device_initialized(self, device):
         """Used by a device to signal that it is initialized"""
+        if self._dblistener is not None:
+            self._dblistener.device_save(device)
         device = zigpy.quirks.get_device(device)
         self.devices[device.ieee] = device
         self.listener_event('device_initialized', device)

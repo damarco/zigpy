@@ -4,6 +4,7 @@ import sqlite3
 import zigpy.device
 import zigpy.endpoint
 import zigpy.profiles
+import zigpy.quirks
 import zigpy.types as t
 
 
@@ -44,6 +45,9 @@ class PersistingListener:
         self._save_device(device)
 
     def device_initialized(self, device):
+        pass
+
+    def device_save(self, device):
         self._save_device(device)
 
     def device_left(self, device):
@@ -201,11 +205,17 @@ class PersistingListener:
             ep = dev.endpoints[endpoint_id]
             ep.add_output_cluster(cluster)
 
+        for device in self._application.devices.values():
+            device = zigpy.quirks.get_device(device)
+            self._application.devices[device.ieee] = device
+
         for (ieee, endpoint_id, cluster, attrid, value) in self._scan("attributes"):
             dev = self._application.get_device(ieee)
-            ep = dev.endpoints[endpoint_id]
-            clus = ep.in_clusters[cluster]
-            clus._attr_cache[attrid] = value
+            if endpoint_id in dev.endpoints:
+                ep = dev.endpoints[endpoint_id]
+                if cluster in ep.in_clusters:
+                    clus = ep.in_clusters[cluster]
+                    clus._attr_cache[attrid] = value
 
 
 class ClusterPersistingListener:

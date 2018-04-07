@@ -18,35 +18,34 @@ def get_device(device, registry=_DEVICE_REGISTRY):
     dev_ep = set(device.endpoints.keys()) - set([0])
     for candidate in registry:
         _LOGGER.debug("Considering %s", candidate)
-        sig = candidate.signature
-        if not _match(sig.keys(), dev_ep):
-            _LOGGER.debug("Fail because endpoint list mismatch: %s %s", sig.keys(), dev_ep)
-            continue
+        for sig in candidate.signature:
+            if not _match(sig.keys(), dev_ep):
+                _LOGGER.debug("Fail because endpoint list mismatch: %s %s", sig.keys(), dev_ep)
+                continue
 
-        if not all([device[eid].profile_id == sig[eid].get('profile_id', device[eid].profile_id) for eid in sig.keys()]):
-            _LOGGER.debug("Fail because profile_id mismatch on at least one endpoint")
-            continue
+            if not all([device[eid].profile_id == sig[eid].get('profile_id', device[eid].profile_id) for eid in sig.keys()]):
+                _LOGGER.debug("Fail because profile_id mismatch on at least one endpoint")
+                continue
 
-        if not all([device[eid].device_type == sig[eid].get('device_type', device[eid].device_type) for eid in sig.keys()]):
-            _LOGGER.debug("Fail because device_type mismatch on at least one endpoint")
-            continue
+            if not all([device[eid].device_type == sig[eid].get('device_type', device[eid].device_type) for eid in sig.keys()]):
+                _LOGGER.debug("Fail because device_type mismatch on at least one endpoint")
+                continue
 
-        if not all([_match(device[eid].in_clusters.keys(),
-                           ep.get('input_clusters', []))
-                    for eid, ep in sig.items()]):
-            _LOGGER.debug("Fail because input cluster mismatch on at least one endpoint")
-            continue
+            if not all([_match(device[eid].in_clusters.keys(),
+                       ep.get('input_clusters', [])) for eid, ep in sig.items()]):
+                _LOGGER.debug("Fail because input cluster mismatch on at least one endpoint")
+                continue
 
-        if not all([_match(device[eid].out_clusters.keys(),
-                           ep.get('output_clusters', []))
-                    for eid, ep in sig.items()]):
-            _LOGGER.debug("Fail because output cluster mismatch on at least one endpoint")
-            continue
+            if not all([_match(device[eid].out_clusters.keys(),
+                               ep.get('output_clusters', []))
+                        for eid, ep in sig.items()]):
+                _LOGGER.debug("Fail because output cluster mismatch on at least one endpoint")
+                continue
 
-        _LOGGER.debug("Found custom device replacement for %s: %s",
-                      device.ieee, candidate)
-        device = candidate(device._application, device.ieee, device.nwk, device)
-        break
+            _LOGGER.debug("Found custom device replacement for %s: %s",
+                          device.ieee, candidate)
+            device = candidate(device._application, device.ieee, device.nwk, device)
+            return device
 
     return device
 
@@ -54,12 +53,15 @@ def get_device(device, registry=_DEVICE_REGISTRY):
 class Registry(type):
     def __init__(cls, name, bases, nmspc):  # noqa: N805
         super(Registry, cls).__init__(name, bases, nmspc)
+        if getattr(cls, '_skip_registry', False):
+            return
         if not (name == 'CustomDevice' and not _DEVICE_REGISTRY):
             add_to_registry(cls)
 
 
 class CustomDevice(Device, metaclass=Registry):
     replacement = {}
+
     def __init__(self, application, ieee, nwk, replaces):
         super().__init__(application, ieee, nwk)
         self.status = DeviceStatus.ENDPOINTS_INIT
@@ -111,6 +113,8 @@ class CustomEndpoint(Endpoint):
                 cluster = c(self)
                 cluster_id = cluster.cluster_id
             self.add_input_cluster(cluster_id, cluster)
+            if cluster_id in replace_device[endpoint_id].in_clusters:
+                self.in_clusters[cluster_id]._attr_cache = replace_device[endpoint_id].in_clusters[cluster_id]._attr_cache
 
         for c in replacement_data.get('output_clusters', []):
             if isinstance(c, int):
@@ -120,6 +124,8 @@ class CustomEndpoint(Endpoint):
                 cluster = c(self)
                 cluster_id = cluster.cluster_id
             self.add_output_cluster(cluster_id, cluster)
+            if cluster_id in replace_device[endpoint_id].out_clusters:
+                self.out_clusters[cluster_id]._attr_cache = replace_device[endpoint_id].out_clusters[cluster_id]._attr_cache
 
 
 class CustomCluster(Cluster):
