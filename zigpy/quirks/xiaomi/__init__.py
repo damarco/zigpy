@@ -1,10 +1,9 @@
+from zigpy.device import Device
 from zigpy.quirks import CustomDevice
 from zigpy.zcl import foundation
 
 
-class XiaomiDevice(CustomDevice):
-    _skip_registry = True
-
+class XiaomiDevice(Device):
     def setup_battery_monitoring(self):
         self._battery_percent = "unknown"
         self._battery_voltage = "unknown"
@@ -53,8 +52,7 @@ class XiaomiDevice(CustomDevice):
         return self._soc_temperature
 
 
-class TemperatureHumiditySensor(XiaomiDevice):
-    _skip_registry = False
+class TemperatureHumiditySensor(CustomDevice, XiaomiDevice):
     signature = [
         {
             # <SimpleDescriptor endpoint=1 profile=260 device_type=24321 device_version=1 input_clusters=[0, 3, 25, 65535, 18] output_clusters=[0, 4, 3, 5, 25, 65535, 18]>
@@ -90,8 +88,7 @@ class TemperatureHumiditySensor(XiaomiDevice):
     }
 
 
-class AqaraTemperatureHumiditySensor(XiaomiDevice):
-    _skip_registry = False
+class AqaraTemperatureHumiditySensor(CustomDevice, XiaomiDevice):
     signature = [
         {
             #  <SimpleDescriptor endpoint=1 profile=260 device_type=24321 device_version=1 input_clusters=[0, 3, 65535, 1026, 1027, 1029] output_clusters=[0, 4, 65535]>
@@ -113,8 +110,7 @@ class AqaraTemperatureHumiditySensor(XiaomiDevice):
     }
 
 
-class AqaraOpenCloseSensor(XiaomiDevice):
-    _skip_registry = False
+class AqaraOpenCloseSensor(CustomDevice, XiaomiDevice):
     signature = [
         {
             #  <SimpleDescriptor endpoint=1 profile=260 device_type=24321 device_version=1 input_clusters=[0, 3, 65535, 6] output_clusters=[0, 4, 65535]>
@@ -136,8 +132,7 @@ class AqaraOpenCloseSensor(XiaomiDevice):
     }
 
 
-class AqaraWaterSensor(XiaomiDevice):
-    _skip_registry = False
+class AqaraWaterSensor(CustomDevice, XiaomiDevice):
     signature = [
         {
             #  <SimpleDescriptor endpoint=1 profile=260 device_type=1026 device_version=1 input_clusters=[0, 3, 1] output_clusters=[25]>

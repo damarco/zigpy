@@ -53,8 +53,6 @@ def get_device(device, registry=_DEVICE_REGISTRY):
 class Registry(type):
     def __init__(cls, name, bases, nmspc):  # noqa: N805
         super(Registry, cls).__init__(name, bases, nmspc)
-        if getattr(cls, '_skip_registry', False):
-            return
         if not (name == 'CustomDevice' and not _DEVICE_REGISTRY):
             add_to_registry(cls)
 

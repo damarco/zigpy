@@ -1,6 +1,7 @@
 import asyncio
 
 import zigpy.types as t
+from zigpy.device import Device
 from zigpy.quirks import CustomDevice, CustomCluster
 
 
@@ -16,9 +17,7 @@ class SmartthingsRelativeHumidityCluster(CustomCluster):
     client_commands = {}
 
 
-class SmartthingsDevice(CustomDevice):
-    _skip_registry = True
-
+class SmartthingsDevice(Device):
     def setup_battery_monitoring(self):
         self._battery_percent = "unknown"
         self._battery_voltage = "unknown"
@@ -57,8 +56,7 @@ class SmartthingsDevice(CustomDevice):
         return self._battery_voltage
 
 
-class SmartthingsMotionSensor(SmartthingsDevice):
-    _skip_registry = False
+class SmartthingsMotionSensor(CustomDevice, SmartthingsDevice):
     signature = [
         {
             # <SimpleDescriptor endpoint=1 profile=260 device_type=1026 device_version=0 input_clusters=[0, 1, 3, 1026, 1280, 32, 2821] output_clusters=[25]>
@@ -88,8 +86,7 @@ class SmartthingsMotionSensor(SmartthingsDevice):
     }
 
 
-class SmartthingsTemperatureHumiditySensor(SmartthingsDevice):
-    _skip_registry = False
+class SmartthingsTemperatureHumiditySensor(CustomDevice, SmartthingsDevice):
     signature = [
         {
             # <SimpleDescriptor endpoint=1 profile=260 device_type=770 device_version=0 input_clusters=[0, 1, 3, 32, 1026, 2821, 64581] output_clusters=[3, 25]>
