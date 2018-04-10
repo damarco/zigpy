@@ -1,8 +1,7 @@
 import asyncio
 
 import zigpy.types as t
-from zigpy.device import Device
-from zigpy.quirks import CustomDevice, CustomCluster
+from zigpy.quirks import BatteryCustomDevice, CustomCluster
 
 
 class SmartthingsRelativeHumidityCluster(CustomCluster):
@@ -17,46 +16,54 @@ class SmartthingsRelativeHumidityCluster(CustomCluster):
     client_commands = {}
 
 
-class SmartthingsDevice(Device):
-    def setup_battery_monitoring(self):
-        self._battery_percent = "unknown"
-        self._battery_voltage = "unknown"
+class SmartthingsArrivalCluster(CustomCluster):
+    # needed to allow deserialization of received cluster commands
+    _skip_registry = False
+    cluster_id = 0xfc05
+    name = 'Smartthings Arrival'
+    attributes = {}
+    server_commands = {
+        0x0000: ('beep', (t.uint16_t, ), False),
+    }
+    client_commands = {
+        0x0000: ('battery', (t.uint8_t, ), False),
+        0x0001: ('presence', (), False),
+    }
+
+
+class SmartthingsDevice(BatteryCustomDevice):
+    _max_voltage = 2800
+    _min_voltage = 1500
+
+    def setup_battery_monitoring(self, new_join):
         self.endpoints[1].in_clusters[1].add_listener(self)
-        loop = asyncio.get_event_loop()
-        loop.call_soon(asyncio.async, self.setup_power_cluster())
+        asyncio.ensure_future(self._setup_power_cluster(new_join))
 
     @asyncio.coroutine
-    def setup_power_cluster(self):
-        yield from self.endpoints[1].in_clusters[1].bind()
-        yield from self.endpoints[1].in_clusters[1].read_attributes([0x0020])
+    def _setup_power_cluster(self, new_join):
+        if new_join:
+            yield from self.endpoints[1].in_clusters[1].bind()
+        try:
+            yield from self.endpoints[1].in_clusters[1].read_attributes([0x0020])
+        except Exception:
+            pass
 
     def attribute_updated(self, attrid, value):
         if attrid == 0x0020:
-            battery_percent = round((value * 100 - 1500) /
-                                    (2800 - 1500) * 100)
-            if battery_percent > 100:
-                battery_percent = 100
-            elif battery_percent < 0:
-                battery_percent = 0
-            self._battery_voltage = value * 100
-            self._battery_percent = battery_percent
+            self._set_battery(value)
 
-    def cluster_command(self, *args, **kwargs):
-        pass
-
-    def zdo_command(self, *args, **kwargs):
-        pass
-
-    @property
-    def battery_percent(self):
-        return self._battery_percent
-
-    @property
-    def battery_voltage(self):
-        return self._battery_voltage
+    def _set_battery(self, value):
+        battery_percent = round((value * 100 - self._min_voltage) /
+                                (self._max_voltage - self._min_voltage) * 100)
+        if battery_percent > 100:
+            battery_percent = 100
+        elif battery_percent < 0:
+            battery_percent = 0
+        self._battery_voltage = value * 100
+        self._battery_percent = battery_percent
 
 
-class SmartthingsMotionSensor(CustomDevice, SmartthingsDevice):
+class SmartthingsMotionSensor(SmartthingsDevice):
     signature = [
         {
             # <SimpleDescriptor endpoint=1 profile=260 device_type=1026 device_version=0 input_clusters=[0, 1, 3, 1026, 1280, 32, 2821] output_clusters=[25]>
@@ -86,7 +93,7 @@ class SmartthingsMotionSensor(CustomDevice, SmartthingsDevice):
     }
 
 
-class SmartthingsTemperatureHumiditySensor(CustomDevice, SmartthingsDevice):
+class SmartthingsTemperatureHumiditySensor(SmartthingsDevice):
     signature = [
         {
             # <SimpleDescriptor endpoint=1 profile=260 device_type=770 device_version=0 input_clusters=[0, 1, 3, 32, 1026, 2821, 64581] output_clusters=[3, 25]>
@@ -107,3 +114,39 @@ class SmartthingsTemperatureHumiditySensor(CustomDevice, SmartthingsDevice):
             }
         }
     }
+
+
+class SmartthingsArrivalSensor(SmartthingsDevice):
+    signature = [
+        {
+            # <SimpleDescriptor endpoint=1 profile=260 device_type=410 device_version=0 input_clusters=[0] output_clusters=[]>
+            1: {
+                'profile_id': 0x0104,
+                'device_type': 0x019A,
+                'input_clusters': [0],
+                'output_clusters': [],
+            },
+            # <SimpleDescriptor endpoint=2 profile=64513 device_type=410 device_version=0 input_clusters=[] output_clusters=[]>
+            2: {
+                'profile_id': 0xFC01,
+                'device_type': 0x019A,
+                'input_clusters': [],
+                'output_clusters': [],
+            },
+        }
+    ]
+
+    replacement = {
+        'endpoints': {
+            2: {
+                'input_clusters': [SmartthingsArrivalCluster]
+            },
+        }
+    }
+
+    def setup_battery_monitoring(self, new_join):
+        self.endpoints[2].in_clusters[SmartthingsArrivalCluster.cluster_id].add_listener(self)
+
+    def cluster_command(self, tsn, command_id, args):
+        if command_id == 0x0000:
+            self._set_battery(args[0])

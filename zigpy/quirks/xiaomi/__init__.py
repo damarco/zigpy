@@ -1,25 +1,18 @@
-from zigpy.device import Device
-from zigpy.quirks import CustomDevice
+from zigpy.quirks import BatteryCustomDevice
 from zigpy.zcl import foundation
 
 
-class XiaomiDevice(Device):
-    def setup_battery_monitoring(self):
-        self._battery_percent = "unknown"
-        self._battery_voltage = "unknown"
-        self._soc_temperature = "unknown"
+class XiaomiDevice(BatteryCustomDevice):
+    _max_voltage = 3000
+    _min_voltage = 2500
+
+    def setup_battery_monitoring(self, new_join):
         self.endpoints[1].in_clusters[0].add_listener(self)
 
     def attribute_updated(self, attrid, value):
         # xiaomi manufacturer specific attribute
         if attrid == 0xFF01 or attrid == 0xFF02:
             self._decode_xiaomi_heartbeat(value)
-
-    def cluster_command(self, *args, **kwargs):
-        pass
-
-    def zdo_command(self, *args, **kwargs):
-        pass
 
     def _decode_xiaomi_heartbeat(self, data):
         while data:
@@ -29,30 +22,18 @@ class XiaomiDevice(Device):
 
             if xiaomi_type == 0x01:
                 battery_percent = round(
-                    (value - 2500) / (3000 - 2500) * 100)
+                    (value - self._min_voltage) /
+                    (self._max_voltage - self._min_voltage) * 100
+                )
                 if battery_percent > 100:
                     battery_percent = 100
                 elif battery_percent < 0:
                     battery_percent = 0
                 self._battery_percent = battery_percent
                 self._battery_voltage = value / 1000
-            elif xiaomi_type == 0x03:
-                self._soc_temperature = value
-
-    @property
-    def battery_percent(self):
-        return self._battery_percent
-
-    @property
-    def battery_voltage(self):
-        return self._battery_voltage
-
-    @property
-    def soc_temperature(self):
-        return self._soc_temperature
 
 
-class TemperatureHumiditySensor(CustomDevice, XiaomiDevice):
+class TemperatureHumiditySensor(XiaomiDevice):
     signature = [
         {
             # <SimpleDescriptor endpoint=1 profile=260 device_type=24321 device_version=1 input_clusters=[0, 3, 25, 65535, 18] output_clusters=[0, 4, 3, 5, 25, 65535, 18]>
@@ -88,7 +69,7 @@ class TemperatureHumiditySensor(CustomDevice, XiaomiDevice):
     }
 
 
-class AqaraTemperatureHumiditySensor(CustomDevice, XiaomiDevice):
+class AqaraTemperatureHumiditySensor(XiaomiDevice):
     signature = [
         {
             #  <SimpleDescriptor endpoint=1 profile=260 device_type=24321 device_version=1 input_clusters=[0, 3, 65535, 1026, 1027, 1029] output_clusters=[0, 4, 65535]>
@@ -110,7 +91,7 @@ class AqaraTemperatureHumiditySensor(CustomDevice, XiaomiDevice):
     }
 
 
-class AqaraOpenCloseSensor(CustomDevice, XiaomiDevice):
+class AqaraOpenCloseSensor(XiaomiDevice):
     signature = [
         {
             #  <SimpleDescriptor endpoint=1 profile=260 device_type=24321 device_version=1 input_clusters=[0, 3, 65535, 6] output_clusters=[0, 4, 65535]>
@@ -132,7 +113,7 @@ class AqaraOpenCloseSensor(CustomDevice, XiaomiDevice):
     }
 
 
-class AqaraWaterSensor(CustomDevice, XiaomiDevice):
+class AqaraWaterSensor(XiaomiDevice):
     signature = [
         {
             #  <SimpleDescriptor endpoint=1 profile=260 device_type=1026 device_version=1 input_clusters=[0, 3, 1] output_clusters=[25]>

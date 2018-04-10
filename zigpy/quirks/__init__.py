@@ -53,11 +53,13 @@ def get_device(device, registry=_DEVICE_REGISTRY):
 class Registry(type):
     def __init__(cls, name, bases, nmspc):  # noqa: N805
         super(Registry, cls).__init__(name, bases, nmspc)
-        if not (name == 'CustomDevice' and not _DEVICE_REGISTRY):
+        if not ((name == 'CustomDevice' or name == 'BatteryCustomDevice') and
+                not _DEVICE_REGISTRY):
             add_to_registry(cls)
 
 
 class CustomDevice(Device, metaclass=Registry):
+    signature = []
     replacement = {}
 
     def __init__(self, application, ieee, nwk, replaces):
@@ -87,6 +89,33 @@ class CustomDevice(Device, metaclass=Registry):
         )
         self.endpoints[endpoint_id] = ep
         return ep
+
+
+class BatteryCustomDevice(CustomDevice):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._battery_percent = 'unknown'
+        self._battery_voltage = 'unknown'
+
+    def setup_battery_monitoring(self, new_join):
+        pass
+
+    def attribute_updated(self, attrid, value):
+        pass
+
+    def cluster_command(self, *args, **kwargs):
+        pass
+
+    def zdo_command(self, *args, **kwargs):
+        pass
+
+    @property
+    def battery_percent(self):
+        return self._battery_percent
+
+    @property
+    def battery_voltage(self):
+        return self._battery_voltage
 
 
 class CustomEndpoint(Endpoint):

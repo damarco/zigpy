@@ -34,7 +34,7 @@ class Device(zigpy.util.LocalLogMixin):
         self.rssi = None
         self.status = Status.NEW
         self.initializing = False
-        self.last_seen = datetime.datetime.now()
+        self.last_seen = 'unknown'
 
     def schedule_initialize(self):
         if self.initializing:
@@ -71,6 +71,7 @@ class Device(zigpy.util.LocalLogMixin):
 
         self.status = Status.ENDPOINTS_INIT
         self.initializing = False
+        self.last_seen = datetime.datetime.now()
         self._application.device_initialized(self)
 
     def add_endpoint(self, endpoint_id):
