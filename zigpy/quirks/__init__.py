@@ -53,8 +53,7 @@ def get_device(device, registry=_DEVICE_REGISTRY):
 class Registry(type):
     def __init__(cls, name, bases, nmspc):  # noqa: N805
         super(Registry, cls).__init__(name, bases, nmspc)
-        if not ((name == 'CustomDevice' or name == 'BatteryCustomDevice') and
-                not _DEVICE_REGISTRY):
+        if not (name in ['CustomDevice', 'BatteryCustomDevice'] and not _DEVICE_REGISTRY):
             add_to_registry(cls)
 
 
@@ -165,3 +164,4 @@ def _match(a, b):
 
 from . import smartthings  # noqa: F401, F402
 from . import xiaomi  # noqa: F401, F402
+from . import phillips  # noqa: F401, F402
