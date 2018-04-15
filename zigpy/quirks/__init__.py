@@ -63,6 +63,7 @@ class CustomDevice(Device, metaclass=Registry):
 
     def __init__(self, application, ieee, nwk, replaces):
         super().__init__(application, ieee, nwk)
+        self.custom_cluster_registry = dict(self._register_custom_clusters())
         self.status = DeviceStatus.ENDPOINTS_INIT
         for endpoint_id, endpoint in self.replacement.get('endpoints', {}).items():
             self.add_endpoint(endpoint_id, replace_device=replaces)
@@ -88,6 +89,11 @@ class CustomDevice(Device, metaclass=Registry):
         )
         self.endpoints[endpoint_id] = ep
         return ep
+
+    def _register_custom_clusters(self):
+        for cluster in CustomCluster.__subclasses__():
+            if self.__module__ == cluster.__module__:
+                yield cluster.cluster_id, cluster
 
 
 class BatteryCustomDevice(CustomDevice):
@@ -164,4 +170,5 @@ def _match(a, b):
 
 from . import smartthings  # noqa: F401, F402
 from . import xiaomi  # noqa: F401, F402
-from . import phillips  # noqa: F401, F402
+from . import philips  # noqa: F401, F402
+from . import ikea  # noqa: F401, F402

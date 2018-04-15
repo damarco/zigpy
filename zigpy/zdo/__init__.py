@@ -10,7 +10,7 @@ from . import types
 LOGGER = logging.getLogger(__name__)
 
 
-def deserialize(cluster_id, data):
+def deserialize(cluster_id, data, device=None):
     tsn, data = data[0], data[1:]
 
     is_reply = bool(cluster_id & 0x8000)

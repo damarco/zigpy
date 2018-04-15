@@ -17,8 +17,6 @@ class SmartthingsRelativeHumidityCluster(CustomCluster):
 
 
 class SmartthingsArrivalCluster(CustomCluster):
-    # needed to allow deserialization of received cluster commands
-    _skip_registry = False
     cluster_id = 0xfc05
     name = 'Smartthings Arrival'
     attributes = {}
@@ -150,3 +148,26 @@ class SmartthingsArrivalSensor(SmartthingsDevice):
     def cluster_command(self, tsn, command_id, args):
         if command_id == 0x0000:
             self._set_battery(args[0])
+
+    @asyncio.coroutine
+    def beep(self):
+        def _beep_sleep():
+            def callback(future):
+                future.exception()
+
+            cluster = self.endpoints[2].in_clusters[SmartthingsArrivalCluster.cluster_id]
+            task = asyncio.ensure_future(cluster.request(
+                False,
+                0x0000,
+                SmartthingsArrivalCluster.server_commands[0x0000][1],
+                0x0115,
+                manufacturer=0x110A,
+                expect_reply=False,
+                tries=3,
+                delay=2,
+            ))
+            task.add_done_callback(callback)
+            yield from asyncio.sleep(7.0)
+
+        for x in range(5):
+            yield from _beep_sleep()

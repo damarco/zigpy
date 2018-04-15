@@ -10,7 +10,7 @@ from zigpy.zcl import foundation
 LOGGER = logging.getLogger(__name__)
 
 
-def deserialize(cluster_id, data):
+def deserialize(cluster_id, data, device=None):
     frame_control, data = data[0], data[1:]
     frame_type = frame_control & 0b0011
     direction = (frame_control & 0b1000) >> 3
@@ -23,11 +23,16 @@ def deserialize(cluster_id, data):
 
     if frame_type == 1:
         # Cluster command
-        if cluster_id not in Cluster._registry:
+        if cluster_id in Cluster._registry:
+            cluster = Cluster._registry[cluster_id]
+        elif (hasattr(device, 'custom_cluster_registry') and
+              cluster_id in device.custom_cluster_registry):
+            cluster = device.custom_cluster_registry[cluster_id]
+        else:
             LOGGER.debug("Ignoring unknown cluster ID 0x%04x",
                          cluster_id)
             return tsn, command_id + 256, is_reply, data
-        cluster = Cluster._registry[cluster_id]
+        
         # Cluster-specific command
 
         if direction:
