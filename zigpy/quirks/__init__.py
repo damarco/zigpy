@@ -170,5 +170,3 @@ def _match(a, b):
 
 from . import smartthings  # noqa: F401, F402
 from . import xiaomi  # noqa: F401, F402
-from . import philips  # noqa: F401, F402
-from . import ikea  # noqa: F401, F402
