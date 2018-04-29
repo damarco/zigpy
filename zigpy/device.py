@@ -1,7 +1,6 @@
 import asyncio
 import enum
 import logging
-import datetime
 
 import zigpy.endpoint
 import zigpy.util
@@ -34,7 +33,6 @@ class Device(zigpy.util.LocalLogMixin):
         self.rssi = None
         self.status = Status.NEW
         self.initializing = False
-        self.last_seen = 'unknown'
 
     def schedule_initialize(self):
         if self.initializing:
@@ -71,7 +69,6 @@ class Device(zigpy.util.LocalLogMixin):
 
         self.status = Status.ENDPOINTS_INIT
         self.initializing = False
-        self.last_seen = datetime.datetime.now()
         self._application.device_initialized(self)
 
     def add_endpoint(self, endpoint_id):
@@ -83,7 +80,6 @@ class Device(zigpy.util.LocalLogMixin):
         return self._application.request(self.nwk, profile, cluster, src_ep, dst_ep, sequence, data, expect_reply=expect_reply)
 
     def handle_message(self, is_reply, profile, cluster, src_ep, dst_ep, tsn, command_id, args):
-        self.last_seen = datetime.datetime.now()
         try:
             endpoint = self.endpoints[src_ep]
         except KeyError:
